@@ -10,8 +10,8 @@ Faz upload de um arquivo de texto e processa os dados
 - **Gerenciamento de Dependências**: Maven
 
 ## Instalação
-Entre na pasta front-end/desafio-tecnico-infisc e execute o comando: npm i
-logo depois execute o comando npm start e entre no endereço: localhost:3000
+Entre na pasta front-end/desafio-tecnico-infisc e execute o comando: npm i |
+logo depois execute o comando npm start e entre no endereço: localhost:3000 |
 para executar a API você deve entrar na ide de sua preferencia e executar o codigo
 
 
