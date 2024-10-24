@@ -1,7 +1,7 @@
-package com.CaetanoRoque.projeto.dasafio_tecnico_infisc.modelo;
+package com.CaetanoRoque.projeto.dasafio_tecnico_infisc.modelo.vo;
 
 public class Aniversario {
-    private String mesAniversario;
+    private Integer mesAniversario;
     private String nome;
     private Integer idade;
     private Integer diaAniversario;
@@ -9,14 +9,14 @@ public class Aniversario {
     public Aniversario(){ 
     }
 
-    public Aniversario(String mesAniversario, String nome, Integer idade, Integer diaAniversario) {
+    public Aniversario(Integer mesAniversario, String nome, Integer idade, Integer diaAniversario) {
         this.mesAniversario = mesAniversario;
         this.nome = nome;
         this.idade = idade;
         this.diaAniversario = diaAniversario;
     }
 
-    public String getMesAniversario() {
+    public Integer getMesAniversario() {
         return mesAniversario;
     }
 
@@ -32,7 +32,7 @@ public class Aniversario {
         return diaAniversario;
     }
 
-    public void setMesAniversario(String mesAniversario) {
+    public void setMesAniversario(Integer mesAniversario) {
         this.mesAniversario = mesAniversario;
     }
 

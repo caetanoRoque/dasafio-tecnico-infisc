@@ -2,6 +2,9 @@ package com.CaetanoRoque.projeto.dasafio_tecnico_infisc.modelo;
 
 import java.time.LocalDate;
 
+import lombok.Builder;
+
+@Builder
 public class Funcionario {
     private Integer id;
     private String nome;

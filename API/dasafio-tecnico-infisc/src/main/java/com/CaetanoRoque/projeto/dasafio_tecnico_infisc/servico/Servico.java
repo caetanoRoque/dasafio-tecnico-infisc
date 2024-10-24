@@ -10,26 +10,42 @@ import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.HashMap;
 import java.util.Map;
-
+import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
-import lombok.NoArgsConstructor;
-
 import com.CaetanoRoque.projeto.dasafio_tecnico_infisc.modelo.Funcionario;
 import com.CaetanoRoque.projeto.dasafio_tecnico_infisc.modelo.Cliente;
 import com.CaetanoRoque.projeto.dasafio_tecnico_infisc.modelo.Venda;
-import com.CaetanoRoque.projeto.dasafio_tecnico_infisc.modelo.Aniversario;
+import com.CaetanoRoque.projeto.dasafio_tecnico_infisc.modelo.vo.Aniversario;
+import com.CaetanoRoque.projeto.dasafio_tecnico_infisc.modelo.vo.TotalDeVendaPorMes;
+import com.CaetanoRoque.projeto.dasafio_tecnico_infisc.modelo.vo.ClienteValor;
+import com.CaetanoRoque.projeto.dasafio_tecnico_infisc.modelo.vo.FuncionarioVendas;
+import com.CaetanoRoque.projeto.dasafio_tecnico_infisc.modelo.vo.FuncionarioNomeData;
+import com.CaetanoRoque.projeto.dasafio_tecnico_infisc.persistence.EntidadeVenda;
+import com.CaetanoRoque.projeto.dasafio_tecnico_infisc.persistence.RepositorioVenda;
+import com.CaetanoRoque.projeto.dasafio_tecnico_infisc.persistence.EntidadeCliente;
+import com.CaetanoRoque.projeto.dasafio_tecnico_infisc.persistence.RepositorioCliente;
+import com.CaetanoRoque.projeto.dasafio_tecnico_infisc.persistence.EntidadeFuncionario;
+import com.CaetanoRoque.projeto.dasafio_tecnico_infisc.persistence.RepositorioFuncionario;
+
+import lombok.RequiredArgsConstructor;
 
 
 @Service
-@NoArgsConstructor
+@RequiredArgsConstructor
 public class Servico {
-    List<Funcionario> listaFuncionarios = new ArrayList<>();
-    List<Cliente> listaClientes= new ArrayList<>();
-    List<Venda> listaVendas= new ArrayList<>();
+
+    private final RepositorioVenda repositorioVenda;
+    private final RepositorioCliente repositorioCliente;
+    private final RepositorioFuncionario repositorioFuncionario;
+    
     public void arquivoProcessado(MultipartFile arquivo) throws IOException  {
+        repositorioVenda.deleteAll();
+        repositorioCliente.deleteAll();
+        repositorioFuncionario.deleteAll();
+
         try (BufferedReader leitor = new BufferedReader(new InputStreamReader(arquivo.getInputStream()))) {
             String linha;
             
@@ -37,33 +53,39 @@ public class Servico {
                 String[]valoresColuna = linha.split("\\|");
                 if(valoresColuna[0].equals("0")){
                     Funcionario funcionario = new Funcionario(Integer.parseInt(valoresColuna[1]), valoresColuna[2], LocalDate.parse(valoresColuna[3])); 
-                    listaFuncionarios.add(funcionario);
+                    repositorioFuncionario.save(EntidadeFuncionario.paraEntidade(funcionario));
                 }
                 if(valoresColuna[0].equals("1")){
                     Cliente cliente = new Cliente(Integer.parseInt(valoresColuna[1]), valoresColuna[2], LocalDate.parse(valoresColuna[3]));
-                    listaClientes.add(cliente);
+                    // listaClientes.add(cliente);
+                    repositorioCliente.save(EntidadeCliente.paraEntidade(cliente));
                 }
                 if (valoresColuna[0].equals("2")){
                     Venda venda = new Venda(Integer.parseInt(valoresColuna[1]), Integer.parseInt(valoresColuna[2]), Integer.parseInt(valoresColuna[3]), new BigDecimal(valoresColuna[4].replace(",", ".")), LocalDate.parse(valoresColuna[5]));
-                    listaVendas.add(venda);
+                    // listaVendas.add(venda);
+
+                    repositorioVenda.save(EntidadeVenda.paraEntidade(venda));
                 }
             }
         }
     }
 
-    public Integer quantidadeFuncionarios(List<String> listaLinhas) {
-        return listaFuncionarios.size();
+    public Integer quantidadeFuncionarios() {
+        return Integer.valueOf((int) repositorioFuncionario.count());
     }
 
-    public Integer quantidadeClientes(List<String> listaLinhas) {
-        return listaClientes.size();
+    public Integer quantidadeClientes() {
+        return Integer.valueOf((int) repositorioCliente.count());
     }
 
-    public Integer quantidadeVendas(List<String> listaLinhas) {
-        return listaVendas.size();
+    public Integer quantidadeVendas() {
+        return Integer.valueOf((int) repositorioVenda.count());
     }
 
-    public BigDecimal totalVendas(List<String> listaLinhas){
+    public BigDecimal totalVendas(){
+        List<Venda> listaVendas = repositorioVenda.findAll().stream().map(EntidadeVenda::paraModelo).collect(Collectors.toList());
+
+
         BigDecimal total = new BigDecimal(0);
         for (Venda venda: listaVendas){
             total = total.add(venda.getValor());
@@ -72,9 +94,10 @@ public class Servico {
 
     }
 
-    // nao fiz controller apartir daqui
+    public List<TotalDeVendaPorMes> totalDeVendasPorMes() {
+        List<TotalDeVendaPorMes> totalDeVendasPorMes = new ArrayList<>();
+        List<Venda> listaVendas = repositorioVenda.findAll().stream().map(EntidadeVenda::paraModelo).collect(Collectors.toList());
 
-    public void calcularVendasPorMes(List<Venda> listaVendas) {
         Map<YearMonth, BigDecimal> totalVendasPorMes = new HashMap<>();
 
         for (Venda venda : listaVendas) {
@@ -84,58 +107,76 @@ public class Servico {
         }
 
         for (Map.Entry<YearMonth, BigDecimal> entry : totalVendasPorMes.entrySet()) {
-            System.out.println("Mês: " + entry.getKey() + " - Total de Vendas: " + entry.getValue());
+            totalDeVendasPorMes.add(TotalDeVendaPorMes.builder().mes(entry.getKey()).totalVendas(entry.getValue()).build());
         }
+
+        return totalDeVendasPorMes;
     }
 
-    //esquecer a F
-
-    // g) Clientes que fazem aniversário no mês, listando o mês, seu nome, sua idade e o dia de aniversário
     public List<Aniversario> aniversariantesDoMes() {
         List<Aniversario> aniversariantes = new ArrayList<>();
         YearMonth mesAtual = YearMonth.now();
+        List<Cliente> listaClientes = repositorioCliente.findAll().stream().map(EntidadeCliente::paraModelo).collect(Collectors.toList());
 
         for (Cliente cliente : listaClientes) {
-            YearMonth mesAniversario = YearMonth.from(cliente.getDataNascimento());
-
-            if (mesAniversario.equals(mesAtual)) {
-                Integer idade = mesAtual.getYear() - cliente.getDataNascimento().getYear();
-                aniversariantes.add(new Aniversario(mesAniversario.getMonth().toString(), cliente.getNome(), idade, cliente.getDataNascimento().getDayOfMonth()));
+            if (cliente.getDataNascimento().getMonthValue() == mesAtual.getMonthValue()) {
+                int idade = mesAtual.getYear() - cliente.getDataNascimento().getYear();
+                if (mesAtual.getMonthValue() < cliente.getDataNascimento().getMonthValue() ||
+                    (mesAtual.getMonthValue() == cliente.getDataNascimento().getMonthValue() && mesAtual.atEndOfMonth().getDayOfMonth() < cliente.getDataNascimento().getDayOfMonth())) {
+                    idade--;
+                }
+                aniversariantes.add(new Aniversario(mesAtual.getMonthValue(), cliente.getNome(), idade, cliente.getDataNascimento().getDayOfMonth()));
             }
         }
 
         return aniversariantes;
     }
 
-    // h) Total de valor de vendas por cliente (listar cada cliente e o valor total gasto);
-    public void totalVendasPorCliente() {
-        Map<Integer, BigDecimal> totalVendasPorCliente = new HashMap<>();
+    public List<ClienteValor> totalComprasPorCliente() {
+        List<ClienteValor> totalVendasPorCliente = new ArrayList<>();
+        List<Venda> listaVendas = repositorioVenda.findAll().stream().map(EntidadeVenda::paraModelo).collect(Collectors.toList());
+        List<Cliente> listaClientes = repositorioCliente.findAll().stream().map(EntidadeCliente::paraModelo).collect(Collectors.toList());
+
+        Map<Integer, BigDecimal> mapTotalVendasPorCliente = new HashMap<>();
 
         for (Venda venda : listaVendas) {
-            totalVendasPorCliente.merge(venda.getIdCliente(), venda.getValor(), BigDecimal::add);
+            mapTotalVendasPorCliente.merge(venda.getIdCliente(), venda.getValor(), BigDecimal::add);
         }
 
-        for (Map.Entry<Integer, BigDecimal> entry : totalVendasPorCliente.entrySet()) {
-            System.out.println("Cliente: " + entry.getKey() + " - Total de Vendas: " + entry.getValue());
+        for (Map.Entry<Integer, BigDecimal> entry : mapTotalVendasPorCliente.entrySet()) {
+            Cliente cliente = listaClientes.stream().filter(c -> c.getId().equals(entry.getKey())).findFirst().orElse(null);
+            if (cliente != null) {
+                totalVendasPorCliente.add(new ClienteValor(cliente.getNome(), entry.getValue()));
+            }
         }
+
+        return totalVendasPorCliente;
     }
 
-    // i) Total de valor de vendas por funcionário (listar cada funcionário e o valor total de vendas);
-    public void totalVendasPorFuncionario() {
-        Map<Integer, BigDecimal> totalVendasPorFuncionario = new HashMap<>();
+    public List<FuncionarioVendas> totalVendasPorFuncionario() {
+        List<FuncionarioVendas> totalVendasPorFuncionario = new ArrayList<>();
+        List<Venda> listaVendas = repositorioVenda.findAll().stream().map(EntidadeVenda::paraModelo).collect(Collectors.toList());
+        List<Funcionario> listaFuncionarios = repositorioFuncionario.findAll().stream().map(EntidadeFuncionario::paraModelo).collect(Collectors.toList());
+
+        Map<Integer, BigDecimal> mapTotalVendasPorFuncionario = new HashMap<>();
 
         for (Venda venda : listaVendas) {
-            totalVendasPorFuncionario.merge(venda.getIdFuncionario(), venda.getValor(), BigDecimal::add);
+            mapTotalVendasPorFuncionario.merge(venda.getIdFuncionario(), venda.getValor(), BigDecimal::add);
         }
 
-        for (Map.Entry<Integer, BigDecimal> entry : totalVendasPorFuncionario.entrySet()) {
-            System.out.println("Funcionário: " + entry.getKey() + " - Total de Vendas: " + entry.getValue());
+        for (Map.Entry<Integer, BigDecimal> entry : mapTotalVendasPorFuncionario.entrySet()) {
+            Funcionario funcionario = listaFuncionarios.stream().filter(f -> f.getId().equals(entry.getKey())).findFirst().orElse(null);
+            if (funcionario != null) {
+                totalVendasPorFuncionario.add(new FuncionarioVendas(funcionario.getNome(), entry.getValue()));
+            }
         }
+        return totalVendasPorFuncionario;
     }
 
-    // j) Qual o NOME do cliente que mais comprou na história da empresa;
-    public void clienteQueMaisComprou() {
+    public String clienteQueMaisComprou() {
         Map<Integer, BigDecimal> totalVendasPorCliente = new HashMap<>();
+        List<Venda> listaVendas = repositorioVenda.findAll().stream().map(EntidadeVenda::paraModelo).collect(Collectors.toList());
+        List<Cliente> listaClientes = repositorioCliente.findAll().stream().map(EntidadeCliente::paraModelo).collect(Collectors.toList());
 
         for (Venda venda : listaVendas) {
             totalVendasPorCliente.merge(venda.getIdCliente(), venda.getValor(), BigDecimal::add);
@@ -153,19 +194,23 @@ public class Servico {
 
         for (Cliente cliente : listaClientes) {
             if (cliente.getId().equals(idClienteMaisComprou)) {
-                System.out.println("Cliente que mais comprou: " + cliente.getNome());
+                return cliente.getNome();
             }
         }
+
+        return "";
     }
 
-    // k) Listar os 3 funcionários (nome e data de contratação), de forma ordenada, que possuem mais tempo de trabalho na empresa.
-    public void funcionariosMaisTempoTrabalho() {
+    public List<FuncionarioNomeData> funcionariosMaisTempoTrabalho() {
+        List<Funcionario> listaFuncionarios = repositorioFuncionario.findAll().stream().map(EntidadeFuncionario::paraModelo).collect(Collectors.toList());
         listaFuncionarios.sort((f1, f2) -> f1.getDataContratacao().compareTo(f2.getDataContratacao()));
 
-        for (int i = 0; i < 3; i++) {
-            Funcionario funcionario = listaFuncionarios.get(i);
-            System.out.println("Funcionário: " + funcionario.getNome() + " - Data de Contratação: " + funcionario.getDataContratacao());
-        }
+        List<FuncionarioNomeData> funcionariosMaisTempo = new ArrayList<>();
+            for (int i = 0; i < 3 && i < listaFuncionarios.size(); i++) {
+                Funcionario funcionario = listaFuncionarios.get(i);
+                funcionariosMaisTempo.add(new FuncionarioNomeData(funcionario.getNome(), funcionario.getDataContratacao()));
+            }
+        return funcionariosMaisTempo;
     }
 
 }

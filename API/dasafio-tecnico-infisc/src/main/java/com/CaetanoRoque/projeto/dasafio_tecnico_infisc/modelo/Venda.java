@@ -2,7 +2,9 @@ package com.CaetanoRoque.projeto.dasafio_tecnico_infisc.modelo;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import lombok.Builder;
 
+@Builder
 public class Venda {
     private Integer idVenda;
     private Integer idFuncionario;
